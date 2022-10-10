@@ -18,7 +18,14 @@ struct SulettaParams {
 
 impl Default for Suletta {
     fn default() -> Self {
-        let audio_graph = sine_hz(440.) * 440. * 1. + 440. >> sine() >> split::<U2>();
+        let def_params = Arc::new(SulettaParams::default());
+
+        let frq = || tag(0, def_params.frequency.plain_value().to_f64());
+        let modulate = || tag(1, def_params.modulation.plain_value().to_f64());
+
+        let audio_graph = frq() >> sine() * frq() * modulate() + frq() >> sine() >> split::<U2>();
+
+        // let audio_graph = sine_hz(440.) * 440. * 1. + 440. >> sine() >> split::<U2>();
         Self {
             params: Arc::new(SulettaParams::default()),
             audio: Box::new(audio_graph) as Box<dyn AudioUnit64 + Send + Sync>,
@@ -31,13 +38,10 @@ impl Default for SulettaParams {
         Self {
             frequency: FloatParam::new(
                 "Frequency",
-                440.,
-                FloatRange::Linear {
-                    min: 20.,
-                    max: 1000.,
-                },
+                440.0,
+                FloatRange::Skewed { min: 20.0, max: 1000.0, factor: FloatRange::skew_factor(-1.0) }
             ),
-            modulation: FloatParam::new("Modulation", 1., FloatRange::Linear { min: 1., max: 5. }),
+            modulation: FloatParam::new("Modulation", 1., FloatRange::Linear { min: 1.0, max: 5.0 }),
         }
     }
 }
@@ -97,6 +101,9 @@ impl Plugin for Suletta {
 
             let mut left_buf = [0f64; MAX_BUFFER_SIZE];
             let mut right_buf = [0f64; MAX_BUFFER_SIZE];
+
+            self.audio.set(0, self.params.frequency.plain_value().to_f64());
+            self.audio.set(1, self.params.modulation.plain_value().to_f64());
 
             self.audio
                 .process(MAX_BUFFER_SIZE, &[], &mut [&mut left_buf, &mut right_buf]);
