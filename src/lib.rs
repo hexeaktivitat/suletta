@@ -9,11 +9,16 @@ struct Suletta {
 }
 
 #[derive(Params)]
-struct SulettaParams {}
+struct SulettaParams {
+    #[id = "freq"]
+    pub frequency: FloatParam,
+    #[id = "modulation"]
+    pub modulation: FloatParam,
+}
 
 impl Default for Suletta {
     fn default() -> Self {
-        let audio_graph = sine_hz(440.) >> split::<U2>();
+        let audio_graph = sine_hz(440.) * 440. * 1. + 440. >> sine() >> split::<U2>();
         Self {
             params: Arc::new(SulettaParams::default()),
             audio: Box::new(audio_graph) as Box<dyn AudioUnit64 + Send + Sync>,
@@ -23,7 +28,17 @@ impl Default for Suletta {
 
 impl Default for SulettaParams {
     fn default() -> Self {
-        Self {}
+        Self {
+            frequency: FloatParam::new(
+                "Frequency",
+                440.,
+                FloatRange::Linear {
+                    min: 20.,
+                    max: 1000.,
+                },
+            ),
+            modulation: FloatParam::new("Modulation", 1., FloatRange::Linear { min: 1., max: 5. }),
+        }
     }
 }
 
