@@ -3,32 +3,32 @@ use std::{char::MAX, sync::Arc};
 use fundsp::hacker::*;
 use nih_plug::prelude::*;
 
-struct Synth {
-    params: Arc<SynthParams>,
+struct Suletta {
+    params: Arc<SulettaParams>,
     audio: Box<dyn AudioUnit64 + Send + Sync>,
 }
 
 #[derive(Params)]
-struct SynthParams {}
+struct SulettaParams {}
 
-impl Default for Synth {
+impl Default for Suletta {
     fn default() -> Self {
-        let audio_graph = noise() >> split::<U2>();
+        let audio_graph = sine_hz(440.) >> split::<U2>();
         Self {
-            params: Arc::new(SynthParams::default()),
+            params: Arc::new(SulettaParams::default()),
             audio: Box::new(audio_graph) as Box<dyn AudioUnit64 + Send + Sync>,
         }
     }
 }
 
-impl Default for SynthParams {
+impl Default for SulettaParams {
     fn default() -> Self {
         Self {}
     }
 }
 
-impl Plugin for Synth {
-    const NAME: &'static str = "Synth";
+impl Plugin for Suletta {
+    const NAME: &'static str = "Suletta";
     const VENDOR: &'static str = "hexeaktivitat";
     const URL: &'static str = "http://no.website.really/";
     const EMAIL: &'static str = "hexeaktivitat@gmail.com";
@@ -98,9 +98,9 @@ impl Plugin for Synth {
     }
 }
 
-impl ClapPlugin for Synth {
-    const CLAP_ID: &'static str = "Synth";
-    const CLAP_DESCRIPTION: Option<&'static str> = Some("Synth description");
+impl ClapPlugin for Suletta {
+    const CLAP_ID: &'static str = "Suletta";
+    const CLAP_DESCRIPTION: Option<&'static str> = Some("Suletta description");
     const CLAP_MANUAL_URL: Option<&'static str> = Some(Self::URL);
     const CLAP_SUPPORT_URL: Option<&'static str> = None;
 
@@ -108,11 +108,11 @@ impl ClapPlugin for Synth {
         &[ClapFeature::Instrument, ClapFeature::Synthesizer];
 }
 
-impl Vst3Plugin for Synth {
+impl Vst3Plugin for Suletta {
     const VST3_CLASS_ID: [u8; 16] = *b"Hexe-Synth-0.0.0";
 
     const VST3_CATEGORIES: &'static str = "Instrument|Synthesizer";
 }
 
-nih_export_clap!(Synth);
-nih_export_vst3!(Synth);
+nih_export_clap!(Suletta);
+nih_export_vst3!(Suletta);
