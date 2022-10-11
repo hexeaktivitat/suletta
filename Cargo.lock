@@ -605,6 +605,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3ff2f71c82567c565ba4b3009a9350a96a7269eaa4001ebedae926230bc2254"
 
 [[package]]
+name = "suletta"
+version = "0.0.1"
+dependencies = [
+ "fundsp",
+ "nih_plug",
+]
+
+[[package]]
 name = "syn"
 version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -613,14 +621,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "synth"
-version = "0.1.0"
-dependencies = [
- "fundsp",
- "nih_plug",
 ]
 
 [[package]]
