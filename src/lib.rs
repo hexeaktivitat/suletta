@@ -49,7 +49,7 @@ impl Default for SulettaParams {
 impl Plugin for Suletta {
     const NAME: &'static str = "Suletta";
     const VENDOR: &'static str = "hexeaktivitat";
-    const URL: &'static str = "http://no.website.really/";
+    const URL: &'static str = "https://github.com/hexeaktivitat/suletta";
     const EMAIL: &'static str = "hexeaktivitat@gmail.com";
 
     const VERSION: &'static str = "0.0.1";
