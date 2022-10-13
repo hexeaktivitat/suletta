@@ -27,12 +27,15 @@ impl Default for Suletta {
 
         let frq = || tag(0, def_params.frequency.plain_value().to_f64());
         let modulate = || tag(1, def_params.modulation.plain_value().to_f64());
-	let filt_cut = || tag(2, def_params.filter_cutoff.plain_value().to_f64());
-	let reso = || tag(3, def_params.filter_cutoff.plain_value().to_f64());
+	    let filt_cut = || tag(2, def_params.filter_cutoff.plain_value().to_f64());
+	    let reso = || tag(3, def_params.filter_cutoff.plain_value().to_f64());
 
-        let audio_graph = frq() >> saw()
-	    >> lowpass_hz(10000.0, 0.0)
-	    >> split::<U2>();
+        let audio_graph = frq() 
+            >> saw()
+            >> (pass() | filt_cut() | reso())
+            >> lowpass()
+            // >> lowpass_hz(10000.0, 0.0)
+	        >> split::<U2>();
 
 	// let audio_graph = frq() >> sine() * frq() * modulate() + frq() >> sine() >> split::<U2>();
 
@@ -75,14 +78,14 @@ impl Default for SulettaParams {
                     factor: FloatRange::skew_factor(-2.0),
                 },
             ),
-	    filter_resonance: FloatParam::new(
-		"Filter Resonance",
-		0.0,
-		FloatRange::Linear {
-		    min: 0.0,
-		    max: 1.0
-		}
-	    ),
+            filter_resonance: FloatParam::new(
+                "Filter Resonance",
+                1.0,
+                FloatRange::Linear {
+                    min: 1.0,
+                    max: 10.0
+                }
+            ),
         }
     }
 }
@@ -147,6 +150,10 @@ impl Plugin for Suletta {
                 .set(0, self.params.frequency.plain_value().to_f64());
             self.audio
                 .set(1, self.params.modulation.plain_value().to_f64());
+            self.audio
+                .set(2, self.params.filter_cutoff.plain_value().to_f64());
+            self.audio
+                .set(3, self.params.filter_resonance.plain_value().to_f64());
 
             self.audio
                 .process(MAX_BUFFER_SIZE, &[], &mut [&mut left_buf, &mut right_buf]);
