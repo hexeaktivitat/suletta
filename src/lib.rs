@@ -30,7 +30,9 @@ impl Default for Suletta {
 	let filt_cut = || tag(2, def_params.filter_cutoff.plain_value().to_f64());
 	let reso = || tag(3, def_params.filter_cutoff.plain_value().to_f64());
 
-        let audio_graph = (frq() >> saw()) >> lowpass_hz(1000.0, 1.0) >> split::<U2>();
+        let audio_graph = frq() >> saw()
+	    >> lowpass_hz(10000.0, 0.0)
+	    >> split::<U2>();
 
 	// let audio_graph = frq() >> sine() * frq() * modulate() + frq() >> sine() >> split::<U2>();
 
@@ -78,7 +80,7 @@ impl Default for SulettaParams {
 		0.0,
 		FloatRange::Linear {
 		    min: 0.0,
-		    max: 100.0
+		    max: 1.0
 		}
 	    ),
         }
