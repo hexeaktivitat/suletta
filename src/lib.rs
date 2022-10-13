@@ -27,8 +27,9 @@ impl Default for Suletta {
 
         // let audio_graph = sine_hz(440.) * 440. * 1. + 440. >> sine() >> split::<U2>();
         Self {
-            params: Arc::new(SulettaParams::default()),
+            params: def_params,
             audio: Box::new(audio_graph) as Box<dyn AudioUnit64 + Send + Sync>,
+            //graph: Net64::new(0,2),
         }
     }
 }
