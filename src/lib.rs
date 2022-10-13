@@ -1,4 +1,4 @@
-use std::{char::MAX, sync::Arc};
+use std::sync::Arc;
 
 use fundsp::hacker::*;
 use nih_plug::prelude::*;
@@ -6,6 +6,7 @@ use nih_plug::prelude::*;
 struct Suletta {
     params: Arc<SulettaParams>,
     audio: Box<dyn AudioUnit64 + Send + Sync>,
+    //graph: Net64,
 }
 
 #[derive(Params)]
@@ -14,6 +15,10 @@ struct SulettaParams {
     pub frequency: FloatParam,
     #[id = "modulation"]
     pub modulation: FloatParam,
+    #[id = "cutoff"]
+    pub filter_cutoff: FloatParam,
+    #[id = "resonance"]
+    pub filter_resonance: FloatParam,
 }
 
 impl Default for Suletta {
@@ -22,13 +27,24 @@ impl Default for Suletta {
 
         let frq = || tag(0, def_params.frequency.plain_value().to_f64());
         let modulate = || tag(1, def_params.modulation.plain_value().to_f64());
+	    let filt_cut = || tag(2, def_params.filter_cutoff.plain_value().to_f64());
+	    let reso = || tag(3, def_params.filter_cutoff.plain_value().to_f64());
 
-        let audio_graph = frq() >> sine() * frq() * modulate() + frq() >> sine() >> split::<U2>();
+        let audio_graph = frq() 
+            >> saw()
+            >> (pass() | filt_cut() | reso())
+            >> lowpass()
+            // >> lowpass_hz(10000.0, 0.0)
+	        >> split::<U2>();
 
+	// let audio_graph = frq() >> sine() * frq() * modulate() + frq() >> sine() >> split::<U2>();
+
+	
         // let audio_graph = sine_hz(440.) * 440. * 1. + 440. >> sine() >> split::<U2>();
         Self {
-            params: Arc::new(SulettaParams::default()),
+            params: def_params,
             audio: Box::new(audio_graph) as Box<dyn AudioUnit64 + Send + Sync>,
+            //graph: Net64::new(0,2),
         }
     }
 }
@@ -39,9 +55,37 @@ impl Default for SulettaParams {
             frequency: FloatParam::new(
                 "Frequency",
                 440.0,
-                FloatRange::Skewed { min: 20.0, max: 1000.0, factor: FloatRange::skew_factor(-1.0) }
+                FloatRange::Skewed {
+                    min: 20.0,
+                    max: 1000.0,
+                    factor: FloatRange::skew_factor(-1.0),
+                },
             ),
-            modulation: FloatParam::new("Modulation", 1., FloatRange::Linear { min: 1.0, max: 5.0 }),
+            modulation: FloatParam::new(
+                "Modulation",
+                1.0,
+                FloatRange::Linear {
+		    min: 1.0,
+		    max: 5.0
+		},
+            ),
+            filter_cutoff: FloatParam::new(
+                "Filter Cutoff",
+                10000.0,
+                FloatRange::Skewed {
+                    min: 20.0,
+                    max: 20000.0,
+                    factor: FloatRange::skew_factor(-2.0),
+                },
+            ),
+            filter_resonance: FloatParam::new(
+                "Filter Resonance",
+                1.0,
+                FloatRange::Linear {
+                    min: 1.0,
+                    max: 10.0
+                }
+            ),
         }
     }
 }
@@ -102,8 +146,14 @@ impl Plugin for Suletta {
             let mut left_buf = [0f64; MAX_BUFFER_SIZE];
             let mut right_buf = [0f64; MAX_BUFFER_SIZE];
 
-            self.audio.set(0, self.params.frequency.plain_value().to_f64());
-            self.audio.set(1, self.params.modulation.plain_value().to_f64());
+            self.audio
+                .set(0, self.params.frequency.plain_value().to_f64());
+            self.audio
+                .set(1, self.params.modulation.plain_value().to_f64());
+            self.audio
+                .set(2, self.params.filter_cutoff.plain_value().to_f64());
+            self.audio
+                .set(3, self.params.filter_resonance.plain_value().to_f64());
 
             self.audio
                 .process(MAX_BUFFER_SIZE, &[], &mut [&mut left_buf, &mut right_buf]);
