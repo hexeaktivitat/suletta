@@ -16,20 +16,20 @@ struct Suletta {
 #[derive(Params)]
 struct SulettaParams {
     #[id = "freq"]
-    pub frequency: FloatParam,
+    pub osc1_frequency: FloatParam,
     #[id = "cutoff"]
-    pub filter_cutoff: FloatParam,
+    pub filter1_cutoff: FloatParam,
     #[id = "resonance"]
-    pub filter_resonance: FloatParam,
+    pub filter1_resonance: FloatParam,
 }
 
 impl Default for Suletta {
     fn default() -> Self {
         let def_params = Arc::new(SulettaParams::default());
 
-        let frq = || tag(OSC1_FREQ, def_params.frequency.plain_value().to_f64());
-	    let filt_cut = || tag(FILT1_CUTOFF, def_params.filter_cutoff.plain_value().to_f64());
-	    let reso = || tag(FILT1_RESO, def_params.filter_cutoff.plain_value().to_f64());
+        let frq = || tag(OSC1_FREQ, def_params.osc1_frequency.plain_value().to_f64());
+	    let filt_cut = || tag(FILT1_CUTOFF, def_params.filter1_cutoff.plain_value().to_f64());
+	    let reso = || tag(FILT1_RESO, def_params.filter1_cutoff.plain_value().to_f64());
 
         let audio_graph = frq() 
             >> saw()
@@ -53,7 +53,7 @@ impl Default for Suletta {
 impl Default for SulettaParams {
     fn default() -> Self {
         Self {
-            frequency: FloatParam::new(
+            osc1_frequency: FloatParam::new(
                 "Frequency",
                 440.0,
                 FloatRange::Skewed {
@@ -62,7 +62,7 @@ impl Default for SulettaParams {
                     factor: FloatRange::skew_factor(-1.0),
                 },
             ),
-            filter_cutoff: FloatParam::new(
+            filter1_cutoff: FloatParam::new(
                 "Filter Cutoff",
                 10000.0,
                 FloatRange::Skewed {
@@ -71,7 +71,7 @@ impl Default for SulettaParams {
                     factor: FloatRange::skew_factor(-2.0),
                 },
             ),
-            filter_resonance: FloatParam::new(
+            filter1_resonance: FloatParam::new(
                 "Filter Resonance",
                 1.0,
                 FloatRange::Linear {
@@ -140,11 +140,11 @@ impl Plugin for Suletta {
             let mut right_buf = [0f64; MAX_BUFFER_SIZE];
 
             self.audio
-                .set(OSC1_FREQ, self.params.frequency.plain_value().to_f64());
+                .set(OSC1_FREQ, self.params.osc1_frequency.plain_value().to_f64());
             self.audio
-                .set(FILT1_CUTOFF, self.params.filter_cutoff.plain_value().to_f64());
+                .set(FILT1_CUTOFF, self.params.filter1_cutoff.plain_value().to_f64());
             self.audio
-                .set(FILT1_RESO, self.params.filter_resonance.plain_value().to_f64());
+                .set(FILT1_RESO, self.params.filter1_resonance.plain_value().to_f64());
 
             self.audio
                 .process(MAX_BUFFER_SIZE, &[], &mut [&mut left_buf, &mut right_buf]);
