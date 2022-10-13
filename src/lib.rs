@@ -1,7 +1,11 @@
+pub mod param_ids;
+
 use std::sync::Arc;
 
 use fundsp::hacker::*;
 use nih_plug::prelude::*;
+
+use param_ids::param_ids::*;
 
 struct Suletta {
     params: Arc<SulettaParams>,
@@ -13,8 +17,6 @@ struct Suletta {
 struct SulettaParams {
     #[id = "freq"]
     pub frequency: FloatParam,
-    #[id = "modulation"]
-    pub modulation: FloatParam,
     #[id = "cutoff"]
     pub filter_cutoff: FloatParam,
     #[id = "resonance"]
@@ -25,10 +27,9 @@ impl Default for Suletta {
     fn default() -> Self {
         let def_params = Arc::new(SulettaParams::default());
 
-        let frq = || tag(0, def_params.frequency.plain_value().to_f64());
-        let modulate = || tag(1, def_params.modulation.plain_value().to_f64());
-	    let filt_cut = || tag(2, def_params.filter_cutoff.plain_value().to_f64());
-	    let reso = || tag(3, def_params.filter_cutoff.plain_value().to_f64());
+        let frq = || tag(OSC1_FREQ, def_params.frequency.plain_value().to_f64());
+	    let filt_cut = || tag(FILT1_CUTOFF, def_params.filter_cutoff.plain_value().to_f64());
+	    let reso = || tag(FILT1_RESO, def_params.filter_cutoff.plain_value().to_f64());
 
         let audio_graph = frq() 
             >> saw()
@@ -60,14 +61,6 @@ impl Default for SulettaParams {
                     max: 1000.0,
                     factor: FloatRange::skew_factor(-1.0),
                 },
-            ),
-            modulation: FloatParam::new(
-                "Modulation",
-                1.0,
-                FloatRange::Linear {
-		    min: 1.0,
-		    max: 5.0
-		},
             ),
             filter_cutoff: FloatParam::new(
                 "Filter Cutoff",
@@ -147,13 +140,11 @@ impl Plugin for Suletta {
             let mut right_buf = [0f64; MAX_BUFFER_SIZE];
 
             self.audio
-                .set(0, self.params.frequency.plain_value().to_f64());
+                .set(OSC1_FREQ, self.params.frequency.plain_value().to_f64());
             self.audio
-                .set(1, self.params.modulation.plain_value().to_f64());
+                .set(FILT1_CUTOFF, self.params.filter_cutoff.plain_value().to_f64());
             self.audio
-                .set(2, self.params.filter_cutoff.plain_value().to_f64());
-            self.audio
-                .set(3, self.params.filter_resonance.plain_value().to_f64());
+                .set(FILT1_RESO, self.params.filter_resonance.plain_value().to_f64());
 
             self.audio
                 .process(MAX_BUFFER_SIZE, &[], &mut [&mut left_buf, &mut right_buf]);
