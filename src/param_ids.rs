@@ -5,4 +5,7 @@ pub mod param_ids {
     // filters
     pub const FILT1_CUTOFF: i64 = 100;
     pub const FILT1_RESO: i64 = 101;
+
+    // MIDI
+    pub const MIDI_ON: i64 = 900;
 }
