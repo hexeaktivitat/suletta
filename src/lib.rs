@@ -52,15 +52,14 @@ impl Default for Suletta {
         let reso = || tag(FILT1_RESO, def_params.filter1_cutoff.plain_value().to_f64());
 
         let offset = || tag(MIDI_ON, 0.0);
-        let env = || offset() >> envelope2(|t, offset| downarc((t - offset) * 2.0));
+        let _env = || offset() >> envelope2(|t, offset| downarc((t - offset) * 2.0));
 
         let audio_graph = frq()
-            >> (env() * saw())
+            >> saw()
             >> (pass() | filt_cut() | reso())
             >> lowpass()
             >> declick()
-            // >> lowpass_hz(10000.0, 0.0)
-	        >> split::<U2>();
+            >> split::<U2>();
 
         // let audio_graph = frq() >> sine() * frq() * modulate() + frq() >> sine() >> split::<U2>();
 
@@ -71,7 +70,7 @@ impl Default for Suletta {
             midi_note_id: 0,
             midi_note_freq: midi_freq,
             midi_note_gain: Smoother::new(SmoothingStyle::Linear(5.0)),
-            sample_rate: 1.0,
+            sample_rate: 41000f32,
             time: Duration::default(),
             enabled: false,
         }
@@ -212,6 +211,8 @@ impl Plugin for Suletta {
                     }
                     NoteEvent::NoteOff { note, .. } if note == self.midi_note_id => {
                         self.midi_note_freq = 0.0;
+                        self.time = Duration::default();
+                        self.enabled = false;
                     }
                     _ => (),
                 }
@@ -244,7 +245,7 @@ impl Plugin for Suletta {
             }
         }
 
-        ProcessStatus::KeepAlive
+        ProcessStatus::Normal
     }
 }
 
