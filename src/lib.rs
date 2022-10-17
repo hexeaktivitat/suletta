@@ -29,6 +29,10 @@ struct SulettaParams {
     pub filter1_cutoff: FloatParam,
     #[id = "resonance"]
     pub filter1_resonance: FloatParam,
+    #[id = "attack"]
+    pub env1_attack: FloatParam,
+    #[id = "release"]
+    pub env1_release: FloatParam,
 }
 
 impl Default for Suletta {
@@ -119,6 +123,24 @@ impl Default for SulettaParams {
                     max: 10.0,
                 },
             ),
+            env1_attack: FloatParam::new(
+                "Attack",
+                0.1,
+                FloatRange::Linear {
+                    min: 0.0,
+                    max: 100.0,
+                },
+            )
+            .with_smoother(SmoothingStyle::Linear(1.0)),
+            env1_release: FloatParam::new(
+                "Release",
+                1.0,
+                FloatRange::Linear {
+                    min: 0.0,
+                    max: 100.0,
+                },
+            )
+            .with_smoother(SmoothingStyle::Linear(1.0)),
         }
     }
 }
