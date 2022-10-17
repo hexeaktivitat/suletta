@@ -21,10 +21,10 @@ struct Suletta {
 
 #[derive(Params)]
 struct SulettaParams {
-    #[id = "freq"]
+    /*     #[id = "freq"]
     pub osc1_frequency: FloatParam,
     #[id = "amp"]
-    pub osc1_amp: FloatParam,
+    pub osc1_amp: FloatParam, */
     #[id = "cutoff"]
     pub filter1_cutoff: FloatParam,
     #[id = "resonance"]
@@ -80,7 +80,7 @@ impl Default for Suletta {
 impl Default for SulettaParams {
     fn default() -> Self {
         Self {
-            osc1_frequency: FloatParam::new(
+            /* osc1_frequency: FloatParam::new(
                 "Frequency",
                 440.0,
                 FloatRange::Skewed {
@@ -102,7 +102,7 @@ impl Default for SulettaParams {
             )
             .with_smoother(SmoothingStyle::Linear(3.0))
             .with_step_size(0.01)
-            .with_unit(" dB"),
+            .with_unit(" dB"), */
             filter1_cutoff: FloatParam::new(
                 "Filter Cutoff",
                 10000.0,
