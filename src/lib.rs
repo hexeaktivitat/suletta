@@ -5,7 +5,7 @@ use std::{sync::Arc, time::Duration};
 use fundsp::hacker::*;
 use nih_plug::prelude::*;
 
-use param_ids::param_ids::*;
+use param_ids::*;
 
 struct Suletta {
     params: Arc<SulettaParams>,
@@ -38,15 +38,20 @@ impl Default for Suletta {
 
         //let frq = || tag(OSC1_FREQ, def_params.osc1_frequency.plain_value().to_f64());
         let frq = || tag(OSC1_FREQ, midi_freq as f64);
-	
-        let filt_cut = || tag(FILT1_CUTOFF,def_params.filter1_cutoff.plain_value().to_f64());
+
+        let filt_cut = || {
+            tag(
+                FILT1_CUTOFF,
+                def_params.filter1_cutoff.plain_value().to_f64(),
+            )
+        };
         let reso = || tag(FILT1_RESO, def_params.filter1_cutoff.plain_value().to_f64());
 
         let offset = || tag(MIDI_ON, 0.0);
         let env = || offset() >> envelope2(|t, offset| downarc((t - offset) * 2.0));
 
         let audio_graph = frq()
-            >> env() * saw()
+            >> (env() * saw())
             >> (pass() | filt_cut() | reso())
             >> lowpass()
             >> declick()
@@ -147,9 +152,9 @@ impl Plugin for Suletta {
 
     fn initialize(
         &mut self,
-        bus_config: &BusConfig,
+        _bus_config: &BusConfig,
         buffer_config: &BufferConfig,
-        context: &mut impl InitContext,
+        _context: &mut impl InitContext,
     ) -> bool {
         self.sample_rate = buffer_config.sample_rate;
 
@@ -165,40 +170,35 @@ impl Plugin for Suletta {
     fn process(
         &mut self,
         buffer: &mut Buffer,
-        aux: &mut AuxiliaryBuffers,
+        _aux: &mut AuxiliaryBuffers,
         context: &mut impl ProcessContext,
     ) -> ProcessStatus {
-        for (block_id, block) in buffer.iter_blocks(MAX_BUFFER_SIZE) {
+        for (_block_id, block) in buffer.iter_blocks(MAX_BUFFER_SIZE) {
             let mut block_channels = block.into_iter();
             let stereo_slice = &mut [
                 block_channels.next().unwrap(),
                 block_channels.next().unwrap(),
             ];
 
-    	    while let Some(event) = context.next_event() {
-	    	    match event {
-		            NoteEvent::NoteOn {
-			            note,
-    			        velocity,
-	    		        ..
-    		        } => {
-        		        self.midi_note_id = note;
-		                self.midi_note_freq = util::midi_note_to_freq(note);
+            while let Some(event) = context.next_event() {
+                match event {
+                    NoteEvent::NoteOn { note, .. } => {
+                        self.midi_note_id = note;
+                        self.midi_note_freq = util::midi_note_to_freq(note);
                         self.audio.set(MIDI_ON, self.time.as_secs_f64());
                         self.enabled = true;
-    	    	    }
-	    	        NoteEvent::NoteOff {note, ..} if note == self.midi_note_id => { 
+                    }
+                    NoteEvent::NoteOff { note, .. } if note == self.midi_note_id => {
                         self.midi_note_freq = 0.0;
-        		    }
-   	        	    _ => (),
-    		    }
-	        }
+                    }
+                    _ => (),
+                }
+            }
 
             let mut left_buf = [0f64; MAX_BUFFER_SIZE];
             let mut right_buf = [0f64; MAX_BUFFER_SIZE];
 
-            self.audio
-                .set(OSC1_FREQ, self.midi_note_freq as f64);
+            self.audio.set(OSC1_FREQ, self.midi_note_freq as f64);
             self.audio.set(
                 FILT1_CUTOFF,
                 self.params.filter1_cutoff.plain_value().to_f64(),
