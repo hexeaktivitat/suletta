@@ -196,10 +196,8 @@ impl Plugin for Suletta {
     ) -> ProcessStatus {
         for (_block_id, block) in buffer.iter_blocks(MAX_BUFFER_SIZE) {
             let mut block_channels = block.into_iter();
-            let stereo_slice = &mut [
-                block_channels.next().unwrap(),
-                block_channels.next().unwrap(),
-            ];
+            let left_channel = block_channels.next().unwrap();
+            let right_channel = block_channels.next().unwrap();
 
             while let Some(event) = context.next_event() {
                 match event {
@@ -232,15 +230,16 @@ impl Plugin for Suletta {
             );
 
             if self.enabled {
-                self.time += Duration::from_secs_f32(MAX_BUFFER_SIZE as f32 / self.sample_rate);
+                //self.time += Duration::from_secs_f32(MAX_BUFFER_SIZE as f32 / self.sample_rate);
 
                 self.audio
                     .process(MAX_BUFFER_SIZE, &[], &mut [&mut left_buf, &mut right_buf]);
             }
-            for (chunk, output) in stereo_slice[0].iter_mut().zip(left_buf.iter()) {
+
+            for (chunk, output) in left_channel.iter_mut().zip(left_buf.iter()) {
                 *chunk = *output as f32;
             }
-            for (chunk, output) in stereo_slice[1].iter_mut().zip(right_buf.iter()) {
+            for (chunk, output) in right_channel.iter_mut().zip(right_buf.iter()) {
                 *chunk = *output as f32;
             }
         }
