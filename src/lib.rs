@@ -259,7 +259,7 @@ impl ClapPlugin for Suletta {
 }
 
 impl Vst3Plugin for Suletta {
-    const VST3_CLASS_ID: [u8; 16] = *b"Hexe-Synth-0.0.0";
+    const VST3_CLASS_ID: [u8; 16] = *b"SulettaSynthxxxx";
 
     const VST3_CATEGORIES: &'static str = "Instrument|Synthesizer";
 }
