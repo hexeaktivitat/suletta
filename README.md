@@ -27,6 +27,9 @@ Plugin files will be located in `./suletta/target/bundled`.
     - [ ] Envelope generators
         - [ ] Basic linear functionality
         - [ ] Linear & exponential envelopes
+    - [ ] MIDI input functionality
+        - [x] Note on/off handling
+        - [ ] CC handling
 - [ ] Determine overall goal of project
     - Options:
         - Sequencing synth designed with ambient in mind
