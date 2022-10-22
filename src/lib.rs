@@ -17,6 +17,8 @@ struct Suletta {
     sample_rate: f32,
     time: Duration,
     enabled: bool,
+    env1_active: An<Var<f64>>,
+    env1_finish: An<Var<f64>>,
 }
 
 #[derive(Params)]
@@ -31,6 +33,10 @@ struct SulettaParams {
     pub filter1_resonance: FloatParam,
     #[id = "attack"]
     pub env1_attack: FloatParam,
+    #[id = "decay"]
+    pub env1_decay: FloatParam,
+    #[id = "sustain"]
+    pub env1_sustain: FloatParam,
     #[id = "release"]
     pub env1_release: FloatParam,
 }
@@ -51,11 +57,17 @@ impl Default for Suletta {
         };
         let reso = || tag(FILT1_RESO, def_params.filter1_cutoff.plain_value().to_f64());
 
-        let offset = || tag(MIDI_ON, 0.0);
-        let _env = || offset() >> envelope2(|t, offset| downarc((t - offset) * 2.0));
+        let atk = def_params.env1_attack.plain_value().to_f64();
+        let dcy = def_params.env1_decay.plain_value().to_f64();
+        let sus = def_params.env1_sustain.plain_value().to_f64();
+        let rel = def_params.env1_release.plain_value().to_f64();
+        let active = var(ENV1_ACTIVE, 0.0);
+        let finished = var(ENV1_FINISH, 1.0);
+
+        let env = || adsr_live(atk, dcy, sus, rel, active, finished);
 
         let audio_graph = frq()
-            >> saw()
+            >> (env() * saw())
             >> (pass() | filt_cut() | reso())
             >> lowpass()
             >> declick()
@@ -73,6 +85,8 @@ impl Default for Suletta {
             sample_rate: 41000f32,
             time: Duration::default(),
             enabled: false,
+            env1_active: var(ENV1_ACTIVE, 0.0),
+            env1_finish: var(ENV1_FINISH, 1.0),
         }
     }
 }
@@ -124,11 +138,26 @@ impl Default for SulettaParams {
             ),
             env1_attack: FloatParam::new(
                 "Attack",
-                0.1,
+                0.5,
                 FloatRange::Linear {
                     min: 0.0,
                     max: 100.0,
                 },
+            )
+            .with_smoother(SmoothingStyle::Linear(1.0)),
+            env1_decay: FloatParam::new(
+                "Decay",
+                1.5,
+                FloatRange::Linear {
+                    min: 0.0,
+                    max: 10.0,
+                },
+            )
+            .with_smoother(SmoothingStyle::Linear(1.0)),
+            env1_sustain: FloatParam::new(
+                "Sustain",
+                0.3,
+                FloatRange::Linear { min: 0.0, max: 1.0 },
             )
             .with_smoother(SmoothingStyle::Linear(1.0)),
             env1_release: FloatParam::new(
@@ -202,18 +231,27 @@ impl Plugin for Suletta {
             while let Some(event) = context.next_event() {
                 match event {
                     NoteEvent::NoteOn { note, .. } => {
+                        self.env1_active.set(ENV1_ACTIVE, 1.0);
                         self.midi_note_id = note;
                         self.midi_note_freq = util::midi_note_to_freq(note);
                         self.audio.set(MIDI_ON, self.time.as_secs_f64());
                         self.enabled = true;
+                        self.audio.reset(Some(self.sample_rate.to_f64()));
+                        self.env1_active.set(ENV1_ACTIVE, 0.0);
                     }
                     NoteEvent::NoteOff { note, .. } if note == self.midi_note_id => {
-                        self.midi_note_freq = 0.0;
                         self.time = Duration::default();
                         self.enabled = false;
+                        self.env1_active.set(ENV1_ACTIVE, 1.0) // send release code
                     }
                     _ => (),
                 }
+            }
+
+            if self.env1_finish.value() > 0.0 {
+                self.env1_finish.set(ENV1_FINISH, 0.0);
+                self.env1_active.set(ENV1_ACTIVE, 0.0);
+                self.midi_note_freq = 0.0;
             }
 
             let mut left_buf = [0f64; MAX_BUFFER_SIZE];
