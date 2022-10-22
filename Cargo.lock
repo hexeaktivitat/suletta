@@ -164,12 +164,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f94fa09c2aeea5b8839e414b7b841bf429fd25b9c522116ac97ee87856d88b2"
+
+[[package]]
 name = "fundsp"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2d51f7b9286f4a913c9c711eeffd06317c41cac67206b110c7ff6a75fc066dc"
+source = "git+https://github.com/SamiPerttu/fundsp#6dd3b2c0c2e44e9d2627f6459522bdcafd949dc6"
 dependencies = [
  "duplicate",
+ "dyn-clone",
  "generic-array",
  "lazy_static",
  "num-complex",
