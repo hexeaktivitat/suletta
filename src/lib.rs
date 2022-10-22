@@ -18,7 +18,7 @@ struct Suletta {
     time: Duration,
     enabled: bool,
     env1_active: An<Var<f64>>,
-    env1_finish: An<Var<f64>>,
+    _env1_finish: An<Var<f64>>,
 }
 
 #[derive(Params)]
@@ -73,9 +73,6 @@ impl Default for Suletta {
             >> declick()
             >> split::<U2>();
 
-        // let audio_graph = frq() >> sine() * frq() * modulate() + frq() >> sine() >> split::<U2>();
-
-        // let audio_graph = sine_hz(440.) * 440. * 1. + 440. >> sine() >> split::<U2>();
         Self {
             params: def_params,
             audio: Box::new(audio_graph) as Box<dyn AudioUnit64 + Send + Sync>,
@@ -86,7 +83,7 @@ impl Default for Suletta {
             time: Duration::default(),
             enabled: false,
             env1_active: var(ENV1_ACTIVE, 0.0),
-            env1_finish: var(ENV1_FINISH, 1.0),
+            _env1_finish: var(ENV1_FINISH, 1.0),
         }
     }
 }
@@ -94,29 +91,6 @@ impl Default for Suletta {
 impl Default for SulettaParams {
     fn default() -> Self {
         Self {
-            /* osc1_frequency: FloatParam::new(
-                "Frequency",
-                440.0,
-                FloatRange::Skewed {
-                    min: 20.0,
-                    max: 20000.0,
-                    factor: FloatRange::skew_factor(-1.0),
-                },
-            )
-            .with_smoother(SmoothingStyle::Exponential(50.0))
-            .with_unit(" Hz")
-            .hide(),
-            osc1_amp: FloatParam::new(
-                "Osc1 Vol",
-                -10.0,
-                FloatRange::Linear {
-                    min: -30.0,
-                    max: 0.0,
-                },
-            )
-            .with_smoother(SmoothingStyle::Linear(3.0))
-            .with_step_size(0.01)
-            .with_unit(" dB"), */
             filter1_cutoff: FloatParam::new(
                 "Filter Cutoff",
                 10000.0,
@@ -141,7 +115,7 @@ impl Default for SulettaParams {
                 0.5,
                 FloatRange::Linear {
                     min: 0.0,
-                    max: 100.0,
+                    max: 10.0,
                 },
             )
             .with_smoother(SmoothingStyle::Linear(1.0)),
@@ -165,7 +139,7 @@ impl Default for SulettaParams {
                 1.0,
                 FloatRange::Linear {
                     min: 0.0,
-                    max: 100.0,
+                    max: 10.0,
                 },
             )
             .with_smoother(SmoothingStyle::Linear(1.0)),
@@ -246,12 +220,6 @@ impl Plugin for Suletta {
                     }
                     _ => (),
                 }
-            }
-
-            if self.env1_finish.value() > 0.0 {
-                self.env1_finish.set(ENV1_FINISH, 0.0);
-                self.env1_active.set(ENV1_ACTIVE, 0.0);
-                self.midi_note_freq = 0.0;
             }
 
             let mut left_buf = [0f64; MAX_BUFFER_SIZE];
