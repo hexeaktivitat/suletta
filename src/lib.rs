@@ -10,23 +10,16 @@ use param_ids::*;
 struct Suletta {
     params: Arc<SulettaParams>,
     audio: Box<dyn AudioUnit64 + Send + Sync>,
-    //graph: Net64,
     midi_note_id: u8,
     midi_note_freq: f32,
     midi_note_gain: Smoother<f32>,
     sample_rate: f32,
     time: Duration,
     enabled: bool,
-    env1_active: An<Var<f64>>,
-    _env1_finish: An<Var<f64>>,
 }
 
 #[derive(Params)]
 struct SulettaParams {
-    /*     #[id = "freq"]
-    pub osc1_frequency: FloatParam,
-    #[id = "amp"]
-    pub osc1_amp: FloatParam, */
     #[id = "cutoff"]
     pub filter1_cutoff: FloatParam,
     #[id = "resonance"]
@@ -47,28 +40,39 @@ impl Default for Suletta {
         let midi_freq: f32 = 0.0;
 
         //let frq = || tag(OSC1_FREQ, def_params.osc1_frequency.plain_value().to_f64());
-        let frq = || tag(OSC1_FREQ, midi_freq as f64);
+        let frq = var(OSC1_FREQ, midi_freq as f64);
 
-        let filt_cut = || {
-            tag(
-                FILT1_CUTOFF,
-                def_params.filter1_cutoff.plain_value().to_f64(),
-            )
-        };
-        let reso = || tag(FILT1_RESO, def_params.filter1_cutoff.plain_value().to_f64());
+        let filt_cut = var(
+            FILT1_CUTOFF,
+            def_params.filter1_cutoff.plain_value().to_f64(),
+        );
+        let reso = var(FILT1_RESO, def_params.filter1_cutoff.plain_value().to_f64());
 
-        let atk = def_params.env1_attack.plain_value().to_f64();
+        /* let atk = def_params.env1_attack.plain_value().to_f64();
         let dcy = def_params.env1_decay.plain_value().to_f64();
         let sus = def_params.env1_sustain.plain_value().to_f64();
         let rel = def_params.env1_release.plain_value().to_f64();
+         */
+        let atk = var(ENV1_ATTACK, def_params.env1_attack.plain_value().to_f64());
+        let dcy = var(ENV1_DECAY, def_params.env1_decay.plain_value().to_f64());
+        let sus = var(ENV1_SUSTAIN, def_params.env1_sustain.plain_value().to_f64());
+        let rel = var(ENV1_RELEASE, def_params.env1_release.plain_value().to_f64());
+
         let active = var(ENV1_ACTIVE, 0.0);
         let finished = var(ENV1_FINISH, 1.0);
 
-        let env = || adsr_live(atk, dcy, sus, rel, active, finished);
+        let env = adsr_live(
+            atk.value(),
+            dcy.value(),
+            sus.value(),
+            rel.value(),
+            active,
+            finished,
+        );
 
-        let audio_graph = frq()
-            >> (env() * saw())
-            >> (pass() | filt_cut() | reso())
+        let audio_graph = frq
+            >> (env * saw())
+            >> (pass() | filt_cut | reso)
             >> lowpass()
             >> declick()
             >> split::<U2>();
@@ -82,8 +86,6 @@ impl Default for Suletta {
             sample_rate: 41000f32,
             time: Duration::default(),
             enabled: false,
-            env1_active: var(ENV1_ACTIVE, 0.0),
-            _env1_finish: var(ENV1_FINISH, 1.0),
         }
     }
 }
@@ -166,6 +168,8 @@ impl Plugin for Suletta {
 
     const SAMPLE_ACCURATE_AUTOMATION: bool = true;
 
+    type BackgroundTask = ();
+
     fn params(&self) -> Arc<dyn Params> {
         self.params.clone()
     }
@@ -178,7 +182,7 @@ impl Plugin for Suletta {
         &mut self,
         _bus_config: &BusConfig,
         buffer_config: &BufferConfig,
-        _context: &mut impl InitContext,
+        _context: &mut impl InitContext<Self>,
     ) -> bool {
         self.sample_rate = buffer_config.sample_rate;
 
@@ -195,7 +199,7 @@ impl Plugin for Suletta {
         &mut self,
         buffer: &mut Buffer,
         _aux: &mut AuxiliaryBuffers,
-        context: &mut impl ProcessContext,
+        context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
         for (_block_id, block) in buffer.iter_blocks(MAX_BUFFER_SIZE) {
             let mut block_channels = block.into_iter();
@@ -205,18 +209,28 @@ impl Plugin for Suletta {
             while let Some(event) = context.next_event() {
                 match event {
                     NoteEvent::NoteOn { note, .. } => {
-                        self.env1_active.set(ENV1_ACTIVE, 1.0);
+                        self.audio.set(ENV1_ACTIVE, 1.0);
                         self.midi_note_id = note;
                         self.midi_note_freq = util::midi_note_to_freq(note);
-                        self.audio.set(MIDI_ON, self.time.as_secs_f64());
                         self.enabled = true;
+                        self.audio
+                            .set(ENV1_ATTACK, self.params.env1_attack.plain_value().to_f64());
+                        self.audio
+                            .set(ENV1_DECAY, self.params.env1_decay.plain_value().to_f64());
+                        self.audio.set(
+                            ENV1_SUSTAIN,
+                            self.params.env1_sustain.plain_value().to_f64(),
+                        );
+                        self.audio.set(
+                            ENV1_RELEASE,
+                            self.params.env1_release.plain_value().to_f64(),
+                        );
+                        self.audio.set(ENV1_ACTIVE, 0.0);
                         self.audio.reset(Some(self.sample_rate.to_f64()));
-                        self.env1_active.set(ENV1_ACTIVE, 0.0);
                     }
                     NoteEvent::NoteOff { note, .. } if note == self.midi_note_id => {
                         self.time = Duration::default();
-                        self.enabled = false;
-                        self.env1_active.set(ENV1_ACTIVE, 1.0) // send release code
+                        self.audio.set(ENV1_ACTIVE, 1.0) // send release code
                     }
                     _ => (),
                 }
@@ -235,11 +249,14 @@ impl Plugin for Suletta {
                 self.params.filter1_resonance.plain_value().to_f64(),
             );
 
-            if self.enabled {
-                //self.time += Duration::from_secs_f32(MAX_BUFFER_SIZE as f32 / self.sample_rate);
-
+            //self.time += Duration::from_secs_f32(MAX_BUFFER_SIZE as f32 / self.sample_rate);
+            if self.enabled && self.audio.get(ENV1_FINISH).unwrap_or(0.0) == 0.0 {
                 self.audio
                     .process(MAX_BUFFER_SIZE, &[], &mut [&mut left_buf, &mut right_buf]);
+            } else {
+                self.enabled = false;
+                self.audio.reset(Some(self.sample_rate.to_f64()));
+                self.audio.set(ENV1_FINISH, 0.0);
             }
 
             for (chunk, output) in left_channel.iter_mut().zip(left_buf.iter()) {
