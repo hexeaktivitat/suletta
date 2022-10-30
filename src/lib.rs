@@ -58,8 +58,8 @@ impl Default for Suletta {
         let sus = var(ENV1_SUSTAIN, def_params.env1_sustain.plain_value().to_f64());
         let rel = var(ENV1_RELEASE, def_params.env1_release.plain_value().to_f64());
 
-        let active = var(ENV1_ACTIVE, 0.0);
-        let finished = var(ENV1_FINISH, 1.0);
+        let active = var(ENV1_ACTIVE, -1.0);
+        let finished = var(ENV1_FINISH, -1.0);
 
         let env = adsr_live(
             atk.value(),
@@ -225,12 +225,11 @@ impl Plugin for Suletta {
                             ENV1_RELEASE,
                             self.params.env1_release.plain_value().to_f64(),
                         );
-                        self.audio.set(ENV1_ACTIVE, 0.0);
+                        self.audio.set(ENV1_ACTIVE, -1.0);
                         self.audio.reset(Some(self.sample_rate.to_f64()));
                     }
                     NoteEvent::NoteOff { note, .. } if note == self.midi_note_id => {
-                        self.time = Duration::default();
-                        self.audio.set(ENV1_ACTIVE, 1.0) // send release code
+                        self.audio.set(ENV1_ACTIVE, 1.0); // send release code
                     }
                     _ => (),
                 }
@@ -250,13 +249,13 @@ impl Plugin for Suletta {
             );
 
             //self.time += Duration::from_secs_f32(MAX_BUFFER_SIZE as f32 / self.sample_rate);
-            if self.enabled && self.audio.get(ENV1_FINISH).unwrap_or(0.0) == 0.0 {
+            if self.enabled && self.audio.get(ENV1_FINISH).unwrap_or(-1.0) > 0.0 {
                 self.audio
                     .process(MAX_BUFFER_SIZE, &[], &mut [&mut left_buf, &mut right_buf]);
             } else {
                 self.enabled = false;
                 self.audio.reset(Some(self.sample_rate.to_f64()));
-                self.audio.set(ENV1_FINISH, 0.0);
+                self.audio.set(ENV1_FINISH, -1.0);
             }
 
             for (chunk, output) in left_channel.iter_mut().zip(left_buf.iter()) {
