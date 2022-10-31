@@ -39,7 +39,6 @@ impl Default for Suletta {
         let def_params = Arc::new(SulettaParams::default());
         let midi_freq: f32 = 0.0;
 
-        //let frq = || tag(OSC1_FREQ, def_params.osc1_frequency.plain_value().to_f64());
         let frq = var(OSC1_FREQ, midi_freq as f64);
 
         let filt_cut = var(
@@ -48,11 +47,6 @@ impl Default for Suletta {
         );
         let reso = var(FILT1_RESO, def_params.filter1_cutoff.plain_value().to_f64());
 
-        /* let atk = def_params.env1_attack.plain_value().to_f64();
-        let dcy = def_params.env1_decay.plain_value().to_f64();
-        let sus = def_params.env1_sustain.plain_value().to_f64();
-        let rel = def_params.env1_release.plain_value().to_f64();
-         */
         let atk = var(ENV1_ATTACK, def_params.env1_attack.plain_value().to_f64());
         let dcy = var(ENV1_DECAY, def_params.env1_decay.plain_value().to_f64());
         let sus = var(ENV1_SUSTAIN, def_params.env1_sustain.plain_value().to_f64());
