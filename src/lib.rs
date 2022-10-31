@@ -14,8 +14,8 @@ struct Suletta {
     midi_note_freq: f32,
     midi_note_gain: Smoother<f32>,
     sample_rate: f32,
-    time: Duration,
-    enabled: bool,
+    env1_offset: Duration,
+    env1_duration: Duration,
 }
 
 #[derive(Params)]
@@ -52,17 +52,9 @@ impl Default for Suletta {
         let sus = var(ENV1_SUSTAIN, def_params.env1_sustain.plain_value().to_f64());
         let rel = var(ENV1_RELEASE, def_params.env1_release.plain_value().to_f64());
 
-        let active = var(ENV1_ACTIVE, -1.0);
-        let finished = var(ENV1_FINISH, -1.0);
+        let offset = var(ENV1_OFFSET, 0.0);
 
-        let env = adsr_live(
-            atk.value(),
-            dcy.value(),
-            sus.value(),
-            rel.value(),
-            active,
-            finished,
-        );
+        let env = offset >> envelope2(|t, e| sin(t - e));
 
         let audio_graph = frq
             >> (env * saw())
@@ -78,8 +70,8 @@ impl Default for Suletta {
             midi_note_freq: midi_freq,
             midi_note_gain: Smoother::new(SmoothingStyle::Linear(5.0)),
             sample_rate: 41000f32,
-            time: Duration::default(),
-            enabled: false,
+            env1_offset: Duration::from_millis(0),
+            env1_duration: Duration::from_secs(0),
         }
     }
 }
@@ -203,10 +195,8 @@ impl Plugin for Suletta {
             while let Some(event) = context.next_event() {
                 match event {
                     NoteEvent::NoteOn { note, .. } => {
-                        self.audio.set(ENV1_ACTIVE, 1.0);
                         self.midi_note_id = note;
                         self.midi_note_freq = util::midi_note_to_freq(note);
-                        self.enabled = true;
                         self.audio
                             .set(ENV1_ATTACK, self.params.env1_attack.plain_value().to_f64());
                         self.audio
@@ -219,12 +209,12 @@ impl Plugin for Suletta {
                             ENV1_RELEASE,
                             self.params.env1_release.plain_value().to_f64(),
                         );
-                        self.audio.set(ENV1_ACTIVE, -1.0);
+                        self.audio
+                            .set(ENV1_OFFSET, self.params.env1_attack.plain_value().to_f64());
+                        self.env1_offset = Duration::from_secs_f32(0.0);
                         self.audio.reset(Some(self.sample_rate.to_f64()));
                     }
-                    NoteEvent::NoteOff { note, .. } if note == self.midi_note_id => {
-                        self.audio.set(ENV1_ACTIVE, 1.0); // send release code
-                    }
+                    NoteEvent::NoteOff { note, .. } if note == self.midi_note_id => {}
                     _ => (),
                 }
             }
@@ -243,14 +233,9 @@ impl Plugin for Suletta {
             );
 
             //self.time += Duration::from_secs_f32(MAX_BUFFER_SIZE as f32 / self.sample_rate);
-            if self.enabled && self.audio.get(ENV1_FINISH).unwrap_or(-1.0) > 0.0 {
-                self.audio
-                    .process(MAX_BUFFER_SIZE, &[], &mut [&mut left_buf, &mut right_buf]);
-            } else {
-                self.enabled = false;
-                self.audio.reset(Some(self.sample_rate.to_f64()));
-                self.audio.set(ENV1_FINISH, -1.0);
-            }
+            self.audio
+                .process(MAX_BUFFER_SIZE, &[], &mut [&mut left_buf, &mut right_buf]);
+            self.env1_offset += Duration::from_secs_f32(MAX_BUFFER_SIZE as f32 * self.sample_rate);
 
             for (chunk, output) in left_channel.iter_mut().zip(left_buf.iter()) {
                 *chunk = *output as f32;
